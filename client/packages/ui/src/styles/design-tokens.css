@@ -1,0 +1,195 @@
+/**
+ * 设计 Token — Cohere 风格设计系统
+ *
+ * 涵盖：字体、颜色、圆角、间距、阴影
+ * 用法：在组件中通过 var(--xxx) 引用
+ *
+ * 参考：docs/ui/DESIGN.md
+ */
+
+:root {
+    /* ──── 字体 ──── */
+    --font-display: 'CohereText', 'Space Grotesk', 'Inter', ui-sans-serif, system-ui;
+    --font-body: 'Unica77 Cohere Web', 'Inter', Arial, ui-sans-serif, system-ui;
+    --font-mono: 'CohereMono', 'JetBrains Mono', ui-monospace, monospace;
+
+    /* ──── 主色 ──── */
+    --color-bg-page: #ffffff;
+    --color-bg-card: #ffffff;
+    --color-bg-snow: #fafafa;
+    --color-bg-elevated: #fafafa;
+
+    /* ──── 文字色 ──── */
+    --color-text-primary: #000000;
+    --color-text-secondary: #212121;
+    --color-text-muted: #93939f;
+
+    /* ──── 边框色 ──── */
+    --color-border-card: #f2f2f2;
+    --color-border-section: #d9d9dd;
+    --color-border-light: #e5e7eb;
+
+    /* ──── 强调色（仅 hover / focus 使用） ──── */
+    --color-accent: #1863dc;
+    --color-accent-hover: #1557c4;
+    --color-focus-purple: #9b60aa;
+    /* 原因：目录权限标签使用青色，与 accent（蓝）、focus-purple（紫）、warning（琥珀）形成区隔 */
+    --color-directory: #0d9488;
+    --color-directory-bg: rgba(13, 148, 136, 0.12);
+
+    /* ──── 激活项颜色（浅色主题用深色，深色主题用浅色，确保高对比度） ──── */
+    --color-bg-active: #1a1a1c;
+    --color-text-active: #ffffff;
+
+    /* ──── 语义色 ──── */
+    --color-success: #52c41a;
+    --color-warning: #faad14;
+    --color-danger: #e74c3c;
+    --color-info: #1863dc;
+
+    /* ──── 反向文字色（用于深色背景/按钮上的浅色文字） ──── */
+    --color-text-inverse: #ffffff;
+
+    /* ──── 语义色背景（toast 等场景使用，带透明度） ──── */
+    --color-bg-success: rgba(82, 196, 26, 0.1);
+    --color-bg-warning: rgba(250, 173, 20, 0.1);
+    --color-bg-danger: rgba(231, 76, 60, 0.1);
+    --color-bg-info: rgba(24, 99, 220, 0.1);
+    --color-bg-accent: rgba(from var(--color-accent) r g b / 0.1);
+
+    /* ──── 语义色边框（toast 等场景使用） ──── */
+    --color-border-success: #22c55e;
+    --color-border-warning: #f59e0b;
+    --color-border-danger: #ef4444;
+    --color-border-info: #3b82f6;
+
+    /* ──── 圆角 ──── */
+    --radius-signature: 22px;
+    --radius-comfortable: 8px;
+    --radius-pill: 9999px;
+
+    /* ──── 间距 (8px base) ──── */
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 40px;
+    --space-6: 56px;
+
+    /* ──── 阴影（极少使用，优先级低） ──── */
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.06);
+
+    /* ──── 页面基础字号（由 useAppSettings 运行时控制） ──── */
+    --font-size-base: 14px;
+
+    /* ──── 响应式断点（供 JS 逻辑引用，CSS 媒体查询直接写数值） ──── */
+    --bp-mobile: 768px;
+    --bp-tablet: 1024px;
+}
+
+/* ════════════════════════════════════════════
+   深色主题 — 通过 useAppSettings 切换 data-theme="dark" 激活
+   设计：仅覆盖颜色变量，保持间距/圆角/字体不变
+   ════════════════════════════════════════════ */
+[data-theme="dark"] {
+    /* ──── 背景色 ──── */
+    --color-bg-page: #1a1a1c;
+    --color-bg-card: #222226;
+    --color-bg-snow: #2a2a2e;
+    --color-bg-elevated: #303034;
+
+    /* ──── 文字色 ──── */
+    --color-text-primary: #e8e8ed;
+    --color-text-secondary: #c4c4cc;
+    --color-text-muted: #888899;
+
+    /* ──── 边框色 ──── */
+    --color-border-card: #333336;
+    --color-border-section: #3a3a3e;
+    --color-border-light: #444448;
+
+    /* ──── 强调色（较亮变体，保证在深色背景上可读） ──── */
+    --color-accent: #4a8bf5;
+    --color-accent-hover: #5f9af7;
+
+    /* 原因：深色主题下使用更亮的青色，保持可读性 */
+    --color-directory: #5eead4;
+    --color-directory-bg: rgba(94, 234, 212, 0.15);
+
+    /* ──── 激活项颜色（深色主题用浅色，与侧边栏深色背景形成对比） ──── */
+    --color-bg-active: #e8e8ed;
+    --color-text-active: #1a1a1c;
+
+    /* ──── 阴影（深色模式降低透明度，避免生硬发白） ──── */
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+    /* ──── 反向文字色（深色模式按钮保持浅色文字） ──── */
+    --color-text-inverse: #ffffff;
+
+    /* ──── 语义色（深色模式使用较亮变体，在暗色背景上保证可读性） ──── */
+    --color-success: #73d945;
+    --color-warning: #fbbf24;
+    --color-danger: #f06a5c;
+    --color-info: #60a5fa;
+
+    /* ──── 语义色背景（深色模式提高透明度补偿暗背景，使颜色更明显） ──── */
+    --color-bg-success: rgba(82, 196, 26, 0.2);
+    --color-bg-warning: rgba(250, 173, 20, 0.2);
+    --color-bg-danger: rgba(231, 76, 60, 0.2);
+    --color-bg-info: rgba(24, 99, 220, 0.2);
+
+    /* ──── 语义色浮动背景（使用 relative color 语法从主色派生，深色模式提高透明度） ──── */
+    --color-bg-accent: rgba(from var(--color-accent) r g b / 0.2);
+
+    /* ──── 语义色边框（深色模式较亮） ──── */
+    --color-border-success: #4ade80;
+    --color-border-warning: #fbbf24;
+    --color-border-danger: #f87171;
+    --color-border-info: #60a5fa;
+}
+
+/* ════════════════════════════════════════════
+   主题切换平滑过渡 — Ant Design 风格
+   设计：通过 .theme-transitioning 类控制，仅在切换瞬间生效，
+   避免在日常交互中产生性能开销。所有颜色属性 300ms ease 过渡。
+   ════════════════════════════════════════════ */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+    /* 原因：仅过渡颜色/背景/边框/阴影，跳过 layout 属性避免重排性能问题 */
+    transition: color 300ms ease,
+                background-color 300ms ease,
+                border-color 300ms ease,
+                box-shadow 300ms ease,
+                fill 300ms ease,
+                stroke 300ms ease !important;
+}
+
+/* ════════════════════════════════════════════
+   主题切换水波涟漪动画 — View Transition API
+   设计：单向扩散，新主题从点击点向外涟漪展开，旧主题原地等待被覆盖
+   涟漪圆心坐标由 JS 在切换时设置 --ripple-x / --ripple-y
+   ════════════════════════════════════════════ */
+::view-transition-old(root) {
+    /* 原因：旧主题无需动画，保持静止等待新主题从点击点扩散覆盖 */
+    animation: none;
+}
+::view-transition-new(root) {
+    /* 覆盖 UA 默认的淡入动画；clip-path 从 0 扩散至 150%，呈现水波单向展开 */
+    animation: ripple-expand 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+    mix-blend-mode: normal;
+}
+
+@keyframes ripple-expand {
+    from {
+        clip-path: circle(0% at var(--ripple-x, 50vw) var(--ripple-y, 50vh));
+        opacity: 1;
+    }
+    to {
+        clip-path: circle(150% at var(--ripple-x, 50vw) var(--ripple-y, 50vh));
+        opacity: 1;
+    }
+}

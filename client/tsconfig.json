@@ -1,0 +1,26 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./packages/utils/tsconfig.json"
+    },
+    {
+      "path": "./packages/requests/tsconfig.json"
+    },
+    {
+      "path": "./packages/ui/tsconfig.json"
+    },
+    {
+      "path": "./app/client-vue/tsconfig.json"
+    },
+    {
+      "path": "./app/client-react/tsconfig.app.json"
+    },
+    {
+      "path": "./app/client-react/tsconfig.node.json"
+    }
+  ]
+}
