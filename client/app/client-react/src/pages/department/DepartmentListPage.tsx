@@ -102,7 +102,7 @@ export default function DepartmentListPage() {
           {authStore.hasPermission(Permissions.DeptDelete) && <Button variant="destructive" size="sm" onClick={() => { setDeleteTarget(node); setDeleteOpen(true) }}>删除</Button>}
         </span>
       </div>
-      {node.children?.length && expandedKeys.has(node.id) && renderTree(node.children, depth + 1)}
+      {(node.children?.length ?? 0) > 0 && expandedKeys.has(node.id) && renderTree(node.children, depth + 1)}
     </div>
   ))
 
