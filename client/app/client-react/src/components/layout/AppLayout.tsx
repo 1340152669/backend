@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { DynamicIcon } from '@/lib/iconMap'
 import { type Permission } from '@/types'
 import { PanelLeftClose, PanelLeftOpen, LogOut, User, Sun, Moon, ChevronDown, Menu, X } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -82,15 +83,21 @@ export default function AppLayout() {
             <div key={perm.id}>
               {perm.menuType === 'directory' && (
                 <div className="space-y-1">
-                  {!collapsed && <div className="text-xs font-medium text-muted-foreground px-2 py-1">{perm.label}</div>}
+                  {!collapsed && (
+                    <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground">
+                      <DynamicIcon name={perm.icon} className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{perm.label}</span>
+                    </div>
+                  )}
                   {perm.children?.filter(c => c.menuType === 'menu' && c.path).map(child => (
                     <Button
                       key={child.id}
                       variant={location.pathname === child.path ? "secondary" : "ghost"}
-                      className={cn("w-full justify-start", collapsed && !isMobile && "justify-center px-2")}
+                      className={cn("w-full justify-start gap-2", collapsed && !isMobile && "justify-center px-2")}
                       onClick={() => handleNavigate(child.path!)}
                     >
-                      <span className="text-sm">{child.label}</span>
+                      <DynamicIcon name={child.icon} className="h-4 w-4 flex-shrink-0" />
+                      {(!collapsed || isMobile) && <span className="text-sm">{child.label}</span>}
                     </Button>
                   ))}
                 </div>

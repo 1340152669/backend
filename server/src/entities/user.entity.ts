@@ -3,6 +3,7 @@ import {
   Entity,
   JoinTable,
   ManyToMany,
+  OneToMany
 } from 'typeorm';
 import { BaseEntity } from './base.entity.js';
 import { Department } from './department.entity.js';
@@ -51,7 +52,7 @@ export class User extends BaseEntity {
   })
   roles!: Role[];
 
-  // 用户所属部门列表，多对多映射到 user_departments 表
-  @ManyToMany(() => Department, (dept) => dept.users)
+  // 用户所属部门列表，一对多映射到 user_departments 表
+  @OneToMany(() => Department, (dept) => dept.users)
   departments!: Department[];
 }
