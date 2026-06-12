@@ -11,7 +11,7 @@ export interface User {
   nickname: string
   status: 0 | 1
   roles: Pick<Role, 'id' | 'name' | 'label'>[]
-  departments?: Pick<Department, 'id' | 'name'>[]
+  department?: Pick<Department, 'id' | 'name'> | null
   createdAt: string
   updatedAt: string
 }
@@ -30,7 +30,7 @@ export interface CreateUserParams {
   nickname: string
   phone?: string
   roleIds: string[]
-  departmentIds?: string[]
+  departmentId?: string
 }
 
 /** 更新用户请求参数 */
@@ -39,7 +39,7 @@ export interface UpdateUserParams {
   nickname?: string
   phone?: string
   status?: 0 | 1
-  departmentIds?: string[]
+  departmentId?: string
 }
 
 /** 更新用户状态参数 */

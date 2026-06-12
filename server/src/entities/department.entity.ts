@@ -1,8 +1,6 @@
 import {
     Column,
     Entity,
-    JoinTable,
-    ManyToMany,
     ManyToOne,
     OneToMany,
 } from 'typeorm';
@@ -15,7 +13,7 @@ import { User } from './user.entity.js';
  * @remarks
  * - 设计原理：自关联实现无限层级树，sort 字段控制同级排序
  * - 一对多自关联：parent → children 构建部门树
- * - 多对多关联 User：一个用户可属于多个部门（user_departments 中间表）
+ * - 一对多关联 User：一个部门可有多个用户
  *
  * @example
  * const dept = await departmentRepo.findOne({ where: { id }, relations: { children: true, users: true } });
@@ -54,12 +52,7 @@ export class Department extends BaseEntity {
     @OneToMany(() => Department, (dept) => dept.parent)
     children?: Department[];
 
-    /** 属于该部门的用户列表（多对多） */
-    @ManyToMany(() => User, (user) => user.departments)
-    @JoinTable({
-        name: 'user_departments',
-        joinColumn: { name: 'departmentId', referencedColumnName: 'id' },
-        inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' },
-    })
+    /** 属于该部门的用户列表（一对多） */
+    @OneToMany(() => User, (user) => user.department)
     users!: User[];
 }

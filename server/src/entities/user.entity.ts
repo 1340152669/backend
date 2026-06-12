@@ -1,9 +1,10 @@
 import {
   Column,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
-  OneToMany
+  ManyToOne
 } from 'typeorm';
 import { BaseEntity } from './base.entity.js';
 import { Department } from './department.entity.js';
@@ -52,7 +53,11 @@ export class User extends BaseEntity {
   })
   roles!: Role[];
 
-  // 用户所属部门列表，一对多映射到 user_departments 表
-  @OneToMany(() => Department, (dept) => dept.users)
-  departments!: Department[];
+  // 用户所属部门，多对一映射到 departments 表（一个用户只能属于一个部门）
+  @Column({ type: 'varchar', nullable: true })
+  departmentId?: string;
+
+  @ManyToOne(() => Department, (dept) => dept.users, { nullable: true })
+  @JoinColumn({ name: 'departmentId', referencedColumnName: 'id' })
+  department?: Department;
 }

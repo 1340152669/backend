@@ -238,26 +238,32 @@ export class DepartmentService {
     }
 
     /**
-     * 为部门分配用户（覆盖式）
+     * 为部门分配用户（覆盖式：将该部门下所有用户的 departmentId 置空，再将指定用户分配过来）
      *
      * @param deptId - 部门 ID
      * @param userIds - 用户 ID 列表
      */
     async assignUsers(deptId: string, userIds: string[]): Promise<Department> {
-        const dept = await this.deptRepo.findById(deptId, {
-            relations: { users: true },
-        });
+        const dept = await this.deptRepo.findById(deptId);
         if (!dept) {
             throw new NotFoundError('部门不存在');
         }
 
-        // 原因：去重防止 user_departments 唯一约束冲突
+        // 原因：一对多关联的拥有侧在 User，需直接更新 users 表的 departmentId 字段
+        // 先将该部门下的所有用户移除
+        await this.dataSource.getRepository(User).update(
+            { departmentId: deptId } as any,
+            { departmentId: undefined as any },
+        );
+
+        // 将指定用户分配到该部门
         const uniqueIds = [...new Set(userIds)];
-        const users = await this.userRepo.getRawRepository().find({
-            where: { id: In(uniqueIds) } as any,
-        });
-        dept.users = users;
-        await this.deptRepo.save(dept);
+        if (uniqueIds.length > 0) {
+            await this.dataSource.getRepository(User).update(
+                { id: In(uniqueIds) } as any,
+                { departmentId: deptId } as any,
+            );
+        }
 
         return this.getById(deptId);
     }

@@ -90,7 +90,7 @@ export class UserRepository extends BaseRepository<User> {
       where,
       skip: params.skip,
       take: params.take,
-      relations: { roles: true, departments: true },
+      relations: { roles: true, department: true },
       order: { createdAt: 'DESC' },
     });
   }

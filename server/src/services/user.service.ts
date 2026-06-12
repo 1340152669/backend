@@ -57,7 +57,7 @@ export class UserService {
    */
   async getById(id: string): Promise<User> {
     const user = await this.userRepo.findById(id, {
-      relations: { roles: { permissions: true }, departments: true },
+      relations: { roles: { permissions: true }, department: true },
     });
     if (!user) {
       throw new NotFoundError('用户不存在');
@@ -78,7 +78,7 @@ export class UserService {
     nickname?: string;
     phone?: string;
     roleIds?: string[];
-    departmentIds?: string[];
+    departmentId?: string | null;
   }): Promise<User> {
     // 原因：用户名和邮箱在数据库有 UNIQUE 约束，包含软删除记录避免 TypeORM 默认过滤后 DB 层抛 unique violation
     const existingUser = await this.userRepo.findByUsername(data.username, true);
@@ -100,19 +100,18 @@ export class UserService {
       roles = await this.roleRepo.findByIds(data.roleIds);
     }
 
+    // 空字符串或 null 均视为清空部门
+    const departmentId = (data.departmentId || null) as any;
+
     const user = await this.userRepo.create({
       username: data.username,
       email: data.email,
       password: hashedPassword,
       nickname: data.nickname,
       phone: data.phone,
+      departmentId,
       roles,
     });
-
-    // 同步部门关联
-    if (data.departmentIds && data.departmentIds.length > 0) {
-      await this.syncDepartments(user.id, data.departmentIds);
-    }
 
     return this.getById(user.id);
   }
@@ -127,7 +126,7 @@ export class UserService {
    */
   async update(
     id: string,
-    data: { email?: string; nickname?: string; phone?: string; status?: UserStatus; departmentIds?: string[] },
+    data: { email?: string; nickname?: string; phone?: string; status?: UserStatus; departmentId?: string | null },
   ): Promise<User> {
     const user = await this.userRepo.findById(id);
     if (!user) {
@@ -151,6 +150,8 @@ export class UserService {
         nickname: data.nickname,
         phone: data.phone,
         status: data.status,
+        // departmentId 仅在明确传入时更新（空字符串或 null 均视为清空部门）
+        ...(data.departmentId !== undefined ? { departmentId: data.departmentId || null } as any : {}),
       });
     } catch (err: any) {
       if (err.code === '23505') {
@@ -158,11 +159,6 @@ export class UserService {
         throw new ConflictError('邮箱已被其他用户占用');
       }
       throw err;
-    }
-
-    // 同步部门关联（全量覆盖）
-    if (data.departmentIds !== undefined) {
-      await this.syncDepartments(id, data.departmentIds);
     }
 
     return this.getById(id);
@@ -222,33 +218,4 @@ export class UserService {
     await this.userRepo.update(id, { password: hashedPassword });
   }
 
-  /**
-   * 同步用户的部门关联（全量覆盖）
-   *
-   * @param userId - 用户 ID
-   * @param departmentIds - 部门 ID 列表
-   * @remarks
-   * 由于 Department 是 user_departments 关系的拥有侧（@JoinTable），
-   * 此处直接操作中间表来同步用户-部门关联。
-   */
-  private async syncDepartments(userId: string, departmentIds: string[]): Promise<void> {
-    // 去重，防止重复 departmentId 导致 user_departments 唯一约束冲突
-    const uniqueIds = [...new Set(departmentIds)];
-
-    // 清除原有部门关联
-    await this.dataSource.createQueryBuilder()
-      .delete()
-      .from('user_departments')
-      .where('userId = :userId', { userId })
-      .execute();
-
-    // 插入新的部门关联
-    if (uniqueIds.length > 0) {
-      await this.dataSource.createQueryBuilder()
-        .insert()
-        .into('user_departments')
-        .values(uniqueIds.map(departmentId => ({ userId, departmentId })))
-        .execute();
-    }
-  }
 }

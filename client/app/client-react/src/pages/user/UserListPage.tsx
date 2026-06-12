@@ -94,7 +94,7 @@ export default function UserListPage() {
       const d = res.data.data
       setEditForm({ email: d.email, nickname: d.nickname || '', phone: d.phone || '' })
       setEditRoleIds(d.roles.map(r => r.id))
-      setEditDeptId((d.departments || [])[0]?.id || '')
+      setEditDeptId(d.department?.id || '')
       setEditStatus(d.status)
     } catch { toast({ title: '获取用户信息失败', variant: 'destructive' }); setEditOpen(false) }
     finally { setEditLoading(false) }
@@ -105,7 +105,7 @@ export default function UserListPage() {
     if (!editZod.validate(editForm)) return
     setEditLoading(true)
     try {
-      await userStore.editUser(editTarget.id, { email: editForm.email, nickname: editForm.nickname, phone: editForm.phone || undefined, status: editStatus, departmentIds: editDeptId ? [editDeptId] : [] })
+      await userStore.editUser(editTarget.id, { email: editForm.email, nickname: editForm.nickname, phone: editForm.phone || undefined, status: editStatus, departmentId: editDeptId || '' })
       if (editRoleIds.length) await userStore.assignRoles(editTarget.id, { roleIds: editRoleIds })
       toast({ title: '用户更新成功' })
       if (authStore.user?.id === editTarget.id) await authStore.fetchUserProfile()
@@ -133,7 +133,7 @@ export default function UserListPage() {
     if (!createZod.validate(createForm)) return
     setCreateLoading(true)
     try {
-      await userStore.addUser({ username: createForm.username, email: createForm.email, password: createForm.password, nickname: createForm.nickname || createForm.username, phone: createForm.phone || undefined, roleIds: createRoleIds, departmentIds: createDeptId ? [createDeptId] : undefined })
+      await userStore.addUser({ username: createForm.username, email: createForm.email, password: createForm.password, nickname: createForm.nickname || createForm.username, phone: createForm.phone || undefined, roleIds: createRoleIds, departmentId: createDeptId || undefined })
       toast({ title: '用户创建成功' }); setCreateOpen(false); resetCreateForm()
       userStore.fetchUsers({ page, pageSize: 20, keyword: searchVal })
     } catch (err: any) { toast({ title: err?.response?.data?.message || '创建失败', variant: 'destructive' }) }

@@ -217,11 +217,11 @@ async function seed() {
     console.log('⏳ 清理旧权限数据...');
 
     // 清空 role_permissions 关联表（解除角色-权限绑定）
-    await dataSource.query('DELETE FROM role_permissions');
+    await dataSource.query('DELETE FROM "role_permissions"');
     console.log('  ✅ 已清空 role_permissions 关联数据');
 
     // 先删子权限（有 parentId），再删父权限（parentId IS NULL），避开 FK 自引用约束
-    await dataSource.query('DELETE FROM permissions WHERE parentId IS NOT NULL');
+    await dataSource.query('DELETE FROM permissions WHERE "parentId" IS NOT NULL');
     await dataSource.query('DELETE FROM permissions');
     console.log('  ✅ 已删除旧版权限数据');
 
