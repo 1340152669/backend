@@ -58,7 +58,7 @@ export class RoleService {
     description?: string;
     status?: 0 | 1;
   }): Promise<Role> {
-    // 原因：包含软删除记录，避免 TypeORM 默认过滤后 DB 层抛 ER_DUP_ENTRY
+    // 原因：包含软删除记录，避免 TypeORM 默认过滤后 DB 层抛 unique violation
     const existing = await this.roleRepo.findByName(data.name, true);
     if (existing) {
       throw new ConflictError('角色名称已存在');
@@ -73,7 +73,7 @@ export class RoleService {
         status: data.status ?? 1,
       });
     } catch (err: any) {
-      if (err.code === 'ER_DUP_ENTRY') {
+      if (err.code === '23505') {
         throw new ConflictError('角色名称已存在');
       }
       throw err;

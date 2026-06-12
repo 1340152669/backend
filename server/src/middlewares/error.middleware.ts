@@ -26,7 +26,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   }
 
   // TypeORM 数据库错误
-  if (err.code === 'ER_DUP_ENTRY') {
+  if (err.code === '23505') {
     fail(res, ErrorCode.CONFLICT, '数据重复', 409);
     return;
   }

@@ -31,7 +31,7 @@ export class Department extends BaseEntity {
     sort!: number;
 
     /** 部门状态：1=启用 / 0=禁用 */
-    @Column({ type: 'tinyint', default: 1 })
+    @Column({ type: 'smallint', default: 1 })
     status!: 0 | 1;
 
     /** 父部门 ID（根部门为 null） */

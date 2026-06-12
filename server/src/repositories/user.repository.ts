@@ -40,7 +40,7 @@ export class UserRepository extends BaseRepository<User> {
    * 按邮箱精确查询
    *
    * @param email - 目标邮箱
-   * @param withDeleted - 是否包含软删除记录（默认 false，用于唯一性检查时需包含软删除，防止 ER_DUP_ENTRY）
+   * @param withDeleted - 是否包含软删除记录（默认 false，用于唯一性检查时需包含软删除，防止 unique violation）
    */
   async findByEmail(email: string, withDeleted = false): Promise<User | null> {
     return this.findOneBy({ email } as FindOptionsWhere<User>, withDeleted ? { withDeleted: true } : undefined);

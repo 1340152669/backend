@@ -93,7 +93,7 @@ export class PermissionService {
     status?: number;
     parentId?: string;
   }): Promise<Permission> {
-    // 原因：包含软删除记录，避免 TypeORM 默认过滤后 DB 层抛 ER_DUP_ENTRY
+    // 原因：包含软删除记录，避免 TypeORM 默认过滤后 DB 层抛 unique violation
     const existing = await this.permissionRepo.findByCode(data.code, true);
     if (existing) {
       throw new ConflictError('权限代码已存在');
@@ -102,7 +102,7 @@ export class PermissionService {
     try {
       return await this.permissionRepo.create(data);
     } catch (err: any) {
-      if (err.code === 'ER_DUP_ENTRY') {
+      if (err.code === '23505') {
         throw new ConflictError('权限代码已存在');
       }
       throw err;
@@ -151,7 +151,7 @@ export class PermissionService {
         // 原因：data.parentId 可能为 null（清除父级），TypeORM 需要 as any 兼容 DeepPartial
         await this.permissionRepo.update(id, data as any);
       } catch (err: any) {
-        if (err.code === 'ER_DUP_ENTRY') {
+        if (err.code === '23505') {
           throw new ConflictError('权限代码已存在');
         }
         throw err;

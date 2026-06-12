@@ -196,7 +196,7 @@ async function seed() {
 
     // 创建 DataSource
     const dataSource = new DataSource({
-        type: 'mysql',
+        type: 'postgres',
         host: config.db.host,
         port: config.db.port,
         username: config.db.user,

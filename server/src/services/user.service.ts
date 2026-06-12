@@ -80,7 +80,7 @@ export class UserService {
     roleIds?: string[];
     departmentIds?: string[];
   }): Promise<User> {
-    // 原因：用户名和邮箱在数据库有 UNIQUE 约束，包含软删除记录避免 TypeORM 默认过滤后 DB 层抛 ER_DUP_ENTRY
+    // 原因：用户名和邮箱在数据库有 UNIQUE 约束，包含软删除记录避免 TypeORM 默认过滤后 DB 层抛 unique violation
     const existingUser = await this.userRepo.findByUsername(data.username, true);
     if (existingUser) {
       throw new ConflictError('用户名已存在');
@@ -136,8 +136,8 @@ export class UserService {
 
     // 原因：仅邮箱被修改时才需唯一性检查，避免未改邮箱时误判
     if (data.email && data.email !== user.email) {
-      // 原因：使用 withDeleted 包含软删除记录，防止 TypeORM 默认过滤后 DB 层抛 ER_DUP_ENTRY
-      // 且排除当前用户自身（MySQL 大小写不敏感 vs JS 严格比较可能误判为不同邮箱）
+      // 原因：使用 withDeleted 包含软删除记录，防止 TypeORM 默认过滤后 DB 层抛 unique violation
+      // 且排除当前用户自身
       const existingEmail = await this.userRepo.findByEmail(data.email, true);
       if (existingEmail && existingEmail.id !== id) {
         throw new ConflictError('邮箱已被使用');
@@ -153,7 +153,7 @@ export class UserService {
         status: data.status,
       });
     } catch (err: any) {
-      if (err.code === 'ER_DUP_ENTRY') {
+      if (err.code === '23505') {
         // 原因：应用层检查通过后仍可能因并发请求导致重复键冲突，给出明确提示
         throw new ConflictError('邮箱已被其他用户占用');
       }

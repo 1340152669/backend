@@ -134,7 +134,7 @@ export class DepartmentService {
                 parentId: data.parentId ?? undefined,
             });
         } catch (err: any) {
-            if (err.code === 'ER_DUP_ENTRY') {
+            if (err.code === '23505') {
                 throw new ConflictError('部门名称已存在');
             }
             throw err;

@@ -31,7 +31,7 @@ export class User extends BaseEntity {
   password!: string;
 
   // 账号状态：1=启用 / 0=禁用
-  @Column({ type: 'tinyint', default: UserStatus.ENABLED })
+  @Column({ type: 'smallint', default: UserStatus.ENABLED })
   status!: UserStatus;
 
   // 用户昵称（可选），用于页面展示

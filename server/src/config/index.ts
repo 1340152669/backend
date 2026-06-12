@@ -12,11 +12,11 @@ export const config = {
   // 服务监听端口，默认 3000
   port: parseInt(process.env.PORT ?? '3000', 10),
 
-  // MySQL 数据库连接配置
+  // PostgreSQL 数据库连接配置
   db: {
     host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '3306', 10),
-    user: process.env.DB_USER ?? 'root',
+    port: parseInt(process.env.DB_PORT ?? '5432', 10),
+    user: process.env.DB_USER ?? 'postgres',
     password: process.env.DB_PASSWORD ?? '',
     name: process.env.DB_NAME ?? 'backend',
   },

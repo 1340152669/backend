@@ -18,7 +18,7 @@ export class Role extends BaseEntity {
   description?: string;
 
   // 角色状态：1=启用 / 0=禁用
-  @Column({ type: 'tinyint', default: 1 })
+  @Column({ type: 'smallint', default: 1 })
   status!: 0 | 1;
 
   // 系统预置角色标识，为 true 时不可删除、不可禁用
