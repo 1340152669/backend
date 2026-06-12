@@ -108,6 +108,8 @@ export class DepartmentService {
      */
     async create(data: {
         name: string;
+        leader: string;
+        contact: string;
         sort?: number;
         status?: 0 | 1;
         parentId?: string | null;
@@ -129,6 +131,8 @@ export class DepartmentService {
         try {
             return await this.deptRepo.create({
                 name: data.name,
+                leader: data.leader,
+                contact: data.contact,
                 sort: data.sort ?? 0,
                 status: data.status ?? 1,
                 parentId: data.parentId ?? undefined,
@@ -153,6 +157,8 @@ export class DepartmentService {
         id: string,
         data: {
             name?: string;
+            leader?: string;
+            contact?: string;
             sort?: number;
             status?: 0 | 1;
             parentId?: string | null;
@@ -184,6 +190,8 @@ export class DepartmentService {
 
         const updateData: Record<string, unknown> = {};
         if (data.name !== undefined) updateData.name = data.name;
+        if (data.leader !== undefined) updateData.leader = data.leader;
+        if (data.contact !== undefined) updateData.contact = data.contact;
         if (data.sort !== undefined) updateData.sort = data.sort;
         if (data.status !== undefined) updateData.status = data.status;
         if (data.parentId !== undefined) updateData.parentId = data.parentId;

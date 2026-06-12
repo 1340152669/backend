@@ -2,6 +2,8 @@
 export interface Department {
   id: string
   name: string
+  leader: string
+  contact: string
   sort: number
   status: 0 | 1
   parentId: string | null
@@ -22,6 +24,8 @@ export interface DepartmentTreeNode extends Department {
 /** 创建部门请求参数 */
 export interface CreateDepartmentParams {
   name: string
+  leader: string
+  contact: string
   sort?: number
   status?: 0 | 1
   parentId?: string | null
@@ -30,6 +34,8 @@ export interface CreateDepartmentParams {
 /** 更新部门请求参数 */
 export interface UpdateDepartmentParams {
   name?: string
+  leader?: string
+  contact?: string
   sort?: number
   status?: 0 | 1
   parentId?: string | null

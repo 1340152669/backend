@@ -10,7 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/components/ui/use-toast'
 import { Permissions } from '@/lib/permissions'
+import { useZodForm } from '@/hooks/useZodForm'
+import { permissionFormSchema } from '@/lib/validators'
 import type { Permission, MenuType } from '@/types'
+import type { PermissionFormData } from '@/lib/validators'
 
 const MAX_TREE_DEPTH = 20
 const SORTABLE_FIELDS = ['code', 'label', 'menuType', 'sort', 'path', 'status', 'isShow'] as const
@@ -59,11 +62,12 @@ export default function PermissionViewPage() {
   const [deleteTarget, setDeleteTarget] = useState<Permission | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const [form, setForm] = useState({
-    code: '', label: '', description: '', menuType: 'directory' as MenuType,
+  const [form, setForm] = useState<PermissionFormData>({
+    code: '', label: '', description: '', menuType: 'directory',
     icon: '', sort: 0, isExternalLink: false, path: '',
-    routeName: '', componentPath: '', routeParams: '', isCache: true, isShow: true, status: 1, parentId: null as string | null,
+    routeName: '', componentPath: '', routeParams: '', isCache: true, isShow: true, status: 1, parentId: null,
   })
+  const { errors, validate, validateField, clearErrors } = useZodForm(permissionFormSchema)
 
   const parentOptions = flattenParentOptions(tree)
 
@@ -95,11 +99,16 @@ export default function PermissionViewPage() {
 
   const resetForm = () => setForm({ code: '', label: '', description: '', menuType: 'directory', icon: '', sort: 0, isExternalLink: false, path: '', routeName: '', componentPath: '', routeParams: '', isCache: true, isShow: true, status: 1, parentId: null })
 
-  const openCreate = (parent?: Permission) => { setIsEdit(false); setEditingPerm(null); resetForm(); if (parent) setForm(prev => ({ ...prev, parentId: parent.id })); setFormOpen(true) }
-  const openEdit = (perm: Permission) => { setIsEdit(true); setEditingPerm(perm); setForm({ code: perm.code || '', label: perm.label || '', description: perm.description || '', menuType: perm.menuType || 'menu', icon: perm.icon || '', sort: perm.sort ?? 0, isExternalLink: perm.isExternalLink ?? false, path: perm.path || '', routeName: perm.routeName || '', componentPath: perm.componentPath || '', routeParams: perm.routeParams || '', isCache: perm.isCache ?? true, isShow: perm.isShow ?? true, status: perm.status ?? 1, parentId: perm.parentId || null }); setFormOpen(true) }
+  /** 更新单个字段并实时校验 */
+  const updateField = useCallback(<K extends keyof PermissionFormData>(key: K, value: PermissionFormData[K]) => {
+    setForm(prev => { const next = { ...prev, [key]: value }; validateField(key, next); return next })
+  }, [validateField])
+
+  const openCreate = (parent?: Permission) => { setIsEdit(false); setEditingPerm(null); resetForm(); clearErrors(); if (parent) setForm(prev => ({ ...prev, parentId: parent.id })); setFormOpen(true) }
+  const openEdit = (perm: Permission) => { setIsEdit(true); setEditingPerm(perm); setForm({ code: perm.code || '', label: perm.label || '', description: perm.description || '', menuType: perm.menuType || 'menu', icon: perm.icon || '', sort: perm.sort ?? 0, isExternalLink: perm.isExternalLink ?? false, path: perm.path || '', routeName: perm.routeName || '', componentPath: perm.componentPath || '', routeParams: perm.routeParams || '', isCache: perm.isCache ?? true, isShow: perm.isShow ?? true, status: perm.status ?? 1, parentId: perm.parentId || null }); clearErrors(); setFormOpen(true) }
 
   const handleSubmit = async () => {
-    if (!form.label) { toast({ title: '权限名称不能为空', variant: 'destructive' }); return }
+    if (!validate(form)) return
     setSubmitting(true)
     const payload: Record<string, unknown> = { label: form.label, menuType: form.menuType, sort: form.sort, isShow: form.isShow, status: form.status, description: form.description || undefined, parentId: form.parentId || undefined, icon: form.icon || undefined, isExternalLink: form.isExternalLink }
     if (form.menuType !== 'button') { payload.path = form.path || undefined }
@@ -175,7 +184,7 @@ export default function PermissionViewPage() {
             {/* 上级权限 */}
             <div className="space-y-2">
               <Label>上级权限</Label>
-              <Select value={form.parentId || '__root__'} onValueChange={v => setForm(p => ({ ...p, parentId: v === '__root__' ? null : v }))}>
+              <Select value={form.parentId || '__root__'} onValueChange={v => updateField('parentId', v === '__root__' ? null : v)}>
                 <SelectTrigger><SelectValue placeholder="顶级权限" /></SelectTrigger>
                 <SelectContent>
                   {parentOptions.map(opt => (
@@ -188,7 +197,7 @@ export default function PermissionViewPage() {
             {/* 权限类型 */}
             <div className="space-y-2">
               <Label>权限类型</Label>
-              <Select value={form.menuType} onValueChange={v => setForm(p => ({ ...p, menuType: v as MenuType }))}>
+              <Select value={form.menuType} onValueChange={v => updateField('menuType', v as MenuType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="directory">目录</SelectItem>
@@ -208,7 +217,7 @@ export default function PermissionViewPage() {
                     {ICONS.map(name => (
                       <button key={name} type="button"
                         className={`flex items-center justify-center w-9 h-9 rounded-md border-2 transition-all text-muted-foreground hover:text-accent hover:border-accent ${form.icon === name ? 'border-accent text-accent bg-accent/10' : 'border-transparent'}`}
-                        title={name} onClick={() => setForm(p => ({ ...p, icon: name }))}>
+                        title={name} onClick={() => updateField('icon', name)}>
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                           <path d={ICON_PATHS[name as keyof typeof ICON_PATHS] || ''} />
                         </svg>
@@ -216,7 +225,7 @@ export default function PermissionViewPage() {
                     ))}
                     <button type="button"
                       className={`flex items-center justify-center w-9 h-9 rounded-md border-2 transition-all text-muted-foreground hover:text-accent hover:border-accent ${!form.icon ? 'border-accent text-accent bg-accent/10' : 'border-transparent'}`}
-                      title="无图标" onClick={() => setForm(p => ({ ...p, icon: '' }))}>
+                      title="无图标" onClick={() => updateField('icon', '')}>
                       <span className="text-xs font-bold">✕</span>
                     </button>
                   </div>
@@ -224,22 +233,23 @@ export default function PermissionViewPage() {
 
                 <div className="space-y-2">
                   <Label>显示排序</Label>
-                  <Input type="number" value={form.sort} onChange={e => setForm(p => ({ ...p, sort: Number(e.target.value) || 0 }))} min={0} max={9999} />
+                  <Input type="number" value={form.sort} onChange={e => updateField('sort', Number(e.target.value) || 0)} min={0} max={9999} />
                 </div>
                 <div className="space-y-2">
                   <Label>权限名称 <span className="text-destructive">*</span></Label>
-                  <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="请输入权限名称" />
+                  <Input value={form.label} onChange={e => updateField('label', e.target.value)} placeholder="请输入权限名称" />
+                  {errors.label && <p className="text-xs text-destructive">{errors.label}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>是否外链</Label>
-                  <Select value={String(form.isExternalLink)} onValueChange={v => setForm(p => ({ ...p, isExternalLink: v === 'true' }))}>
+                  <Select value={String(form.isExternalLink)} onValueChange={v => updateField('isExternalLink', v === 'true')}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="false">否</SelectItem><SelectItem value="true">是</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>路由地址</Label>
-                  <Input value={form.path} onChange={e => setForm(p => ({ ...p, path: e.target.value }))} placeholder="如 /users" />
+                  <Input value={form.path} onChange={e => updateField('path', e.target.value)} placeholder="如 /users" />
                 </div>
               </>
             )}
@@ -249,15 +259,16 @@ export default function PermissionViewPage() {
               <>
                 <div className="space-y-2">
                   <Label>显示排序</Label>
-                  <Input type="number" value={form.sort} onChange={e => setForm(p => ({ ...p, sort: Number(e.target.value) || 0 }))} min={0} max={9999} />
+                  <Input type="number" value={form.sort} onChange={e => updateField('sort', Number(e.target.value) || 0)} min={0} max={9999} />
                 </div>
                 <div className="space-y-2">
                   <Label>权限名称 <span className="text-destructive">*</span></Label>
-                  <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="请输入权限名称" />
+                  <Input value={form.label} onChange={e => updateField('label', e.target.value)} placeholder="请输入权限名称" />
+                  {errors.label && <p className="text-xs text-destructive">{errors.label}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>权限字符 <span className="text-destructive">*</span></Label>
-                  <Input value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} placeholder="如 system:user:read" />
+                  <Input value={form.code} onChange={e => updateField('code', e.target.value)} placeholder="如 system:user:read" />
                 </div>
               </>
             )}
@@ -267,23 +278,23 @@ export default function PermissionViewPage() {
               <>
                 <div className="space-y-2">
                   <Label>路由名称</Label>
-                  <Input value={form.routeName} onChange={e => setForm(p => ({ ...p, routeName: e.target.value }))} placeholder="路由的 name 属性" />
+                  <Input value={form.routeName} onChange={e => updateField('routeName', e.target.value)} placeholder="路由的 name 属性" />
                 </div>
                 <div className="space-y-2">
                   <Label>权限字符</Label>
-                  <Input value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} placeholder="如 system:user" />
+                  <Input value={form.code} onChange={e => updateField('code', e.target.value)} placeholder="如 system:user" />
                 </div>
                 <div className="space-y-2">
                   <Label>组件路径</Label>
-                  <Input value={form.componentPath} onChange={e => setForm(p => ({ ...p, componentPath: e.target.value }))} placeholder="@/views/system/user/UserListView.vue" />
+                  <Input value={form.componentPath} onChange={e => updateField('componentPath', e.target.value)} placeholder="@/views/system/user/UserListView.vue" />
                 </div>
                 <div className="space-y-2">
                   <Label>路由参数</Label>
-                  <Input value={form.routeParams} onChange={e => setForm(p => ({ ...p, routeParams: e.target.value }))} placeholder="JSON 格式参数，选填" />
+                  <Input value={form.routeParams} onChange={e => updateField('routeParams', e.target.value)} placeholder="JSON 格式参数，选填" />
                 </div>
                 <div className="space-y-2">
                   <Label>是否缓存</Label>
-                  <Select value={String(form.isCache)} onValueChange={v => setForm(p => ({ ...p, isCache: v === 'true' }))}>
+                  <Select value={String(form.isCache)} onValueChange={v => updateField('isCache', v === 'true')}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="true">缓存</SelectItem><SelectItem value="false">不缓存</SelectItem></SelectContent>
                   </Select>
@@ -295,7 +306,7 @@ export default function PermissionViewPage() {
             {form.menuType !== 'button' && (
               <div className="space-y-2">
                 <Label>显示状态</Label>
-                <Select value={String(form.isShow)} onValueChange={v => setForm(p => ({ ...p, isShow: v === 'true' }))}>
+                <Select value={String(form.isShow)} onValueChange={v => updateField('isShow', v === 'true')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="true">显示</SelectItem><SelectItem value="false">隐藏</SelectItem></SelectContent>
                 </Select>
@@ -305,7 +316,7 @@ export default function PermissionViewPage() {
             {/* 权限状态（所有类型） */}
             <div className="space-y-2">
               <Label>权限状态</Label>
-              <Select value={String(form.status)} onValueChange={v => setForm(p => ({ ...p, status: Number(v) }))}>
+              <Select value={String(form.status)} onValueChange={v => updateField('status', Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="1">正常</SelectItem><SelectItem value="0">停用</SelectItem></SelectContent>
               </Select>

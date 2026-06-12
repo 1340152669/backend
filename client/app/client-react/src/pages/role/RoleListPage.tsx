@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRoleStore } from '@/stores/role'
 import { usePermissionStore } from '@/stores/permission'
 import { useAuthStore } from '@/stores/auth'
@@ -12,8 +12,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/use-toast'
 import { Permissions } from '@/lib/permissions'
+import { useZodForm } from '@/hooks/useZodForm'
+import { roleFormSchema } from '@/lib/validators'
 import { PermissionTreeSelect } from './PermissionTreeSelect'
 import type { Role } from '@/types'
+import type { RoleFormData } from '@/lib/validators'
+
+const INIT_FORM: RoleFormData = { name: '', label: '', description: '', status: 1 }
 
 export default function RoleListPage() {
   const roleStore = useRoleStore()
@@ -21,9 +26,10 @@ export default function RoleListPage() {
   const authStore = useAuthStore()
   const [editOpen, setEditOpen] = useState(false)
   const [isCreate, setIsCreate] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', label: '', description: '', status: 1 as 0 | 1 })
+  const [editForm, setEditForm] = useState<RoleFormData>({ ...INIT_FORM })
   const [editLoading, setEditLoading] = useState(false)
   const [editTarget, setEditTarget] = useState<Role | null>(null)
+  const { errors, validate, validateField, clearErrors } = useZodForm(roleFormSchema)
 
   const [permOpen, setPermOpen] = useState(false)
   const [permRole, setPermRole] = useState<Role | null>(null)
@@ -40,13 +46,19 @@ export default function RoleListPage() {
 
   useEffect(() => { roleStore.fetchRoles(); permStore.fetchTree() }, [])
 
-  const openCreate = () => { setIsCreate(true); setEditTarget(null); setEditForm({ name: '', label: '', description: '', status: 1 }); setEditOpen(true) }
+  /** 更新单个字段并实时校验 */
+  const updateField = useCallback(<K extends keyof RoleFormData>(key: K, value: RoleFormData[K]) => {
+    setEditForm(prev => { const next = { ...prev, [key]: value }; validateField(key, next); return next })
+  }, [validateField])
+
+  const openCreate = () => { setIsCreate(true); setEditTarget(null); setEditForm({ ...INIT_FORM }); clearErrors(); setEditOpen(true) }
   const openEdit = async (role: Role) => {
-    setIsCreate(false); setEditTarget(role); setEditOpen(true); setEditLoading(true)
+    setIsCreate(false); setEditTarget(role); setEditOpen(true); setEditLoading(true); clearErrors()
     try { const res = await getRoleById<Role>(role.id); const d = res.data.data; setEditForm({ name: d.name, label: d.label, description: d.description || '', status: d.status }) }
     finally { setEditLoading(false) }
   }
   const handleEdit = async () => {
+    if (!validate(editForm)) return
     setEditLoading(true)
     try {
       if (isCreate) await roleStore.addRole({ name: editForm.name, label: editForm.label, description: editForm.description || undefined, status: editForm.status })
@@ -106,7 +118,7 @@ export default function RoleListPage() {
         </Table>
       </div>
 
-      {/* 区域：创建/编辑角色弹窗；设计：两列布局——角色标识与名称同排，描述占整行，减少纵向滚动 */}
+      {/* 区域：创建/编辑角色弹窗；设计：两列布局——角色标识与名称同排，描述占整行 */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>{isCreate ? '创建角色' : '编辑角色'}</DialogTitle></DialogHeader>
@@ -114,22 +126,24 @@ export default function RoleListPage() {
             <div className="space-y-2">
               <Label>角色标识 {!isCreate ? '' : <span className="text-destructive">*</span>}</Label>
               {isCreate ? (
-                <Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} placeholder="仅支持小写字母和下划线，如 editor" />
+                <Input value={editForm.name} onChange={e => updateField('name', e.target.value)} placeholder="仅支持小写字母和下划线，如 editor" />
               ) : (
                 <Input value={editTarget?.name || ''} disabled />
               )}
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label>角色名称 <span className="text-destructive">*</span></Label>
-              <Input value={editForm.label} onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))} placeholder="如：编辑" />
+              <Input value={editForm.label} onChange={e => updateField('label', e.target.value)} placeholder="如：编辑" />
+              {errors.label && <p className="text-xs text-destructive">{errors.label}</p>}
             </div>
             <div className="col-span-1 sm:col-span-2 space-y-2">
               <Label>描述</Label>
-              <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="选填，最多 200 个字符" maxLength={200} rows={3} />
+              <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" value={editForm.description} onChange={e => updateField('description', e.target.value)} placeholder="选填，最多 200 个字符" maxLength={200} rows={3} />
             </div>
             <div className="space-y-2">
               <Label>状态</Label>
-              <Select value={String(editForm.status)} onValueChange={v => setEditForm(p => ({ ...p, status: Number(v) as 0 | 1 }))}>
+              <Select value={String(editForm.status)} onValueChange={v => updateField('status', Number(v) as 0 | 1)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectContent>
               </Select>

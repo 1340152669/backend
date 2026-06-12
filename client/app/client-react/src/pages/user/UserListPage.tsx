@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useUserStore } from '@/stores/user'
 import { useRoleStore } from '@/stores/role'
 import { useDepartmentStore } from '@/stores/department'
@@ -15,7 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatDateTime } from '@/lib/format'
 import { toast } from '@/components/ui/use-toast'
 import { Permissions } from '@/lib/permissions'
+import { useZodForm } from '@/hooks/useZodForm'
+import { userCreateFormSchema, userEditFormSchema } from '@/lib/validators'
 import type { User, DepartmentTreeNode } from '@/types'
+import type { UserCreateFormData, UserEditFormData } from '@/lib/validators'
 
 /** 递归渲染部门树选项；通过 paddingLeft 缩进体现层级 */
 function renderDeptOptions(nodes: DepartmentTreeNode[], depth = 0): React.ReactNode[] {
@@ -26,6 +29,9 @@ function renderDeptOptions(nodes: DepartmentTreeNode[], depth = 0): React.ReactN
     ...(n.children?.length ? renderDeptOptions(n.children, depth + 1) : []),
   ])
 }
+
+const INIT_CREATE: UserCreateFormData = { username: '', email: '', password: '', nickname: '', phone: '' }
+const INIT_EDIT: UserEditFormData = { email: '', nickname: '', phone: '' }
 
 export default function UserListPage() {
   const userStore = useUserStore()
@@ -39,8 +45,12 @@ export default function UserListPage() {
   // 编辑弹窗
   const [editOpen, setEditOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<User | null>(null)
-  const [editForm, setEditForm] = useState({ email: '', nickname: '', phone: '', status: 1 as 0 | 1, roleIds: [] as string[], deptId: '' })
+  const [editForm, setEditForm] = useState<UserEditFormData>({ ...INIT_EDIT })
+  const [editRoleIds, setEditRoleIds] = useState<string[]>([])
+  const [editDeptId, setEditDeptId] = useState('')
   const [editLoading, setEditLoading] = useState(false)
+  const [editStatus, setEditStatus] = useState<0 | 1>(1)
+  const editZod = useZodForm(userEditFormSchema)
 
   // 删除确认
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -53,8 +63,11 @@ export default function UserListPage() {
 
   // 创建弹窗
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', nickname: '', phone: '', roleIds: [] as string[], deptId: '' })
+  const [createForm, setCreateForm] = useState<UserCreateFormData>({ ...INIT_CREATE })
+  const [createRoleIds, setCreateRoleIds] = useState<string[]>([])
+  const [createDeptId, setCreateDeptId] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
+  const createZod = useZodForm(userCreateFormSchema)
 
   useEffect(() => {
     userStore.fetchUsers({ page, pageSize: 20, keyword: searchVal })
@@ -64,21 +77,36 @@ export default function UserListPage() {
 
   const handleSearch = () => { setPage(1); setSearchVal(keyword) }
 
+  /** 创建表单：更新字段并实时校验 */
+  const updateCreateField = useCallback(<K extends keyof UserCreateFormData>(key: K, value: UserCreateFormData[K]) => {
+    setCreateForm(prev => { const next = { ...prev, [key]: value }; createZod.validateField(key, next); return next })
+  }, [createZod.validateField])
+
+  /** 编辑表单：更新字段并实时校验 */
+  const updateEditField = useCallback(<K extends keyof UserEditFormData>(key: K, value: UserEditFormData[K]) => {
+    setEditForm(prev => { const next = { ...prev, [key]: value }; editZod.validateField(key, next); return next })
+  }, [editZod.validateField])
+
   const openEdit = async (user: User) => {
-    setEditTarget(user); setEditOpen(true); setEditLoading(true)
+    setEditTarget(user); setEditOpen(true); setEditLoading(true); editZod.clearErrors()
     try {
       const res = await getUserById<User>(user.id)
       const d = res.data.data
-      setEditForm({ email: d.email, nickname: d.nickname || '', phone: d.phone || '', status: d.status, roleIds: d.roles.map(r => r.id), deptId: (d.departments || [])[0]?.id || '' })
+      setEditForm({ email: d.email, nickname: d.nickname || '', phone: d.phone || '' })
+      setEditRoleIds(d.roles.map(r => r.id))
+      setEditDeptId((d.departments || [])[0]?.id || '')
+      setEditStatus(d.status)
     } catch { toast({ title: '获取用户信息失败', variant: 'destructive' }); setEditOpen(false) }
     finally { setEditLoading(false) }
   }
 
   const handleEdit = async () => {
-    if (!editTarget) return; setEditLoading(true)
+    if (!editTarget) return
+    if (!editZod.validate(editForm)) return
+    setEditLoading(true)
     try {
-      await userStore.editUser(editTarget.id, { email: editForm.email, nickname: editForm.nickname, phone: editForm.phone || undefined, status: editForm.status, departmentIds: editForm.deptId ? [editForm.deptId] : [] })
-      if (editForm.roleIds.length) await userStore.assignRoles(editTarget.id, { roleIds: editForm.roleIds })
+      await userStore.editUser(editTarget.id, { email: editForm.email, nickname: editForm.nickname, phone: editForm.phone || undefined, status: editStatus, departmentIds: editDeptId ? [editDeptId] : [] })
+      if (editRoleIds.length) await userStore.assignRoles(editTarget.id, { roleIds: editRoleIds })
       toast({ title: '用户更新成功' })
       if (authStore.user?.id === editTarget.id) await authStore.fetchUserProfile()
       setEditOpen(false)
@@ -100,12 +128,12 @@ export default function UserListPage() {
     finally { setResetting(false) }
   }
 
-  const resetCreateForm = () => setCreateForm({ username: '', email: '', password: '', nickname: '', phone: '', roleIds: [], deptId: '' })
+  const resetCreateForm = () => { setCreateForm({ ...INIT_CREATE }); setCreateRoleIds([]); setCreateDeptId(''); createZod.clearErrors() }
   const handleCreate = async () => {
-    if (!createForm.username || !createForm.email || !createForm.password) { toast({ title: '请填写必要字段', variant: 'destructive' }); return }
+    if (!createZod.validate(createForm)) return
     setCreateLoading(true)
     try {
-      await userStore.addUser({ username: createForm.username, email: createForm.email, password: createForm.password, nickname: createForm.nickname || createForm.username, phone: createForm.phone || undefined, roleIds: createForm.roleIds, departmentIds: createForm.deptId ? [createForm.deptId] : undefined })
+      await userStore.addUser({ username: createForm.username, email: createForm.email, password: createForm.password, nickname: createForm.nickname || createForm.username, phone: createForm.phone || undefined, roleIds: createRoleIds, departmentIds: createDeptId ? [createDeptId] : undefined })
       toast({ title: '用户创建成功' }); setCreateOpen(false); resetCreateForm()
       userStore.fetchUsers({ page, pageSize: 20, keyword: searchVal })
     } catch (err: any) { toast({ title: err?.response?.data?.message || '创建失败', variant: 'destructive' }) }
@@ -153,38 +181,42 @@ export default function UserListPage() {
         </Table>
       </div>
 
-      {/* 区域：创建用户弹窗；设计：两列布局——基础字段（用户名/邮箱/密码/昵称/手机号）两两同排，角色与部门选择区占整行 */}
+      {/* 区域：创建用户弹窗；设计：两列布局——基础字段两两同排，角色与部门选择区占整行 */}
       <Dialog open={createOpen} onOpenChange={v => { if (!v) { setCreateOpen(false); resetCreateForm() } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>创建用户</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 py-2">
             <div className="space-y-2">
               <Label>用户名 <span className="text-destructive">*</span></Label>
-              <Input value={createForm.username} onChange={e => setCreateForm(p => ({ ...p, username: e.target.value }))} placeholder="2～50 个字符" />
+              <Input value={createForm.username} onChange={e => updateCreateField('username', e.target.value)} placeholder="2～50 个字符" />
+              {createZod.errors.username && <p className="text-xs text-destructive">{createZod.errors.username}</p>}
             </div>
             <div className="space-y-2">
               <Label>邮箱 <span className="text-destructive">*</span></Label>
-              <Input type="email" value={createForm.email} onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))} placeholder="请输入邮箱地址" />
+              <Input type="email" value={createForm.email} onChange={e => updateCreateField('email', e.target.value)} placeholder="请输入邮箱地址" />
+              {createZod.errors.email && <p className="text-xs text-destructive">{createZod.errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label>密码 <span className="text-destructive">*</span></Label>
-              <Input type="password" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} placeholder="至少 6 个字符" />
+              <Input type="password" value={createForm.password} onChange={e => updateCreateField('password', e.target.value)} placeholder="至少 6 个字符" />
+              {createZod.errors.password && <p className="text-xs text-destructive">{createZod.errors.password}</p>}
             </div>
             <div className="space-y-2">
               <Label>昵称</Label>
-              <Input value={createForm.nickname} onChange={e => setCreateForm(p => ({ ...p, nickname: e.target.value }))} placeholder="选填" />
+              <Input value={createForm.nickname} onChange={e => updateCreateField('nickname', e.target.value)} placeholder="选填" />
             </div>
             <div className="space-y-2">
               <Label>手机号</Label>
-              <Input value={createForm.phone} onChange={e => setCreateForm(p => ({ ...p, phone: e.target.value }))} placeholder="选填" />
+              <Input value={createForm.phone} onChange={e => updateCreateField('phone', e.target.value)} placeholder="选填" />
+              {createZod.errors.phone && <p className="text-xs text-destructive">{createZod.errors.phone}</p>}
             </div>
             {roleStore.list.length > 0 && (
               <div className="col-span-1 sm:col-span-2 space-y-2">
                 <Label>分配角色</Label>
                 <MultiSelect
                   options={roleStore.list.map(r => ({ label: r.label, value: r.id }))}
-                  value={createForm.roleIds}
-                  onChange={v => setCreateForm(p => ({ ...p, roleIds: v }))}
+                  value={createRoleIds}
+                  onChange={v => setCreateRoleIds(v)}
                   placeholder="请选择角色"
                   searchPlaceholder="搜索角色..."
                 />
@@ -193,7 +225,7 @@ export default function UserListPage() {
             {deptStore.tree.length > 0 && (
               <div className="col-span-1 sm:col-span-2 space-y-2">
                 <Label>所属部门</Label>
-                <Select value={createForm.deptId || undefined} onValueChange={v => setCreateForm(p => ({ ...p, deptId: v }))}>
+                <Select value={createDeptId || undefined} onValueChange={v => setCreateDeptId(v)}>
                   <SelectTrigger><SelectValue placeholder="请选择部门" /></SelectTrigger>
                   <SelectContent className="max-h-60">{renderDeptOptions(deptStore.tree)}</SelectContent>
                 </Select>
@@ -218,19 +250,21 @@ export default function UserListPage() {
             </div>
             <div className="space-y-2">
               <Label>邮箱 <span className="text-destructive">*</span></Label>
-              <Input value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} placeholder="请输入邮箱" />
+              <Input value={editForm.email} onChange={e => updateEditField('email', e.target.value)} placeholder="请输入邮箱" />
+              {editZod.errors.email && <p className="text-xs text-destructive">{editZod.errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label>昵称</Label>
-              <Input value={editForm.nickname} onChange={e => setEditForm(p => ({ ...p, nickname: e.target.value }))} placeholder="选填" />
+              <Input value={editForm.nickname} onChange={e => updateEditField('nickname', e.target.value)} placeholder="选填" />
             </div>
             <div className="space-y-2">
               <Label>手机号</Label>
-              <Input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} placeholder="选填" />
+              <Input value={editForm.phone} onChange={e => updateEditField('phone', e.target.value)} placeholder="选填" />
+              {editZod.errors.phone && <p className="text-xs text-destructive">{editZod.errors.phone}</p>}
             </div>
             <div className="space-y-2">
               <Label>状态</Label>
-              <Select value={String(editForm.status)} onValueChange={v => setEditForm(p => ({ ...p, status: Number(v) as 0 | 1 }))}>
+              <Select value={String(editStatus)} onValueChange={v => setEditStatus(Number(v) as 0 | 1)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">启用</SelectItem>
@@ -243,8 +277,8 @@ export default function UserListPage() {
                 <Label>分配角色</Label>
                 <MultiSelect
                   options={roleStore.list.map(r => ({ label: r.label, value: r.id }))}
-                  value={editForm.roleIds}
-                  onChange={v => setEditForm(p => ({ ...p, roleIds: v }))}
+                  value={editRoleIds}
+                  onChange={v => setEditRoleIds(v)}
                   placeholder="请选择角色"
                   searchPlaceholder="搜索角色..."
                 />
@@ -253,7 +287,7 @@ export default function UserListPage() {
             {deptStore.tree.length > 0 && (
               <div className="col-span-1 sm:col-span-2 space-y-2">
                 <Label>所属部门</Label>
-                <Select value={editForm.deptId || undefined} onValueChange={v => setEditForm(p => ({ ...p, deptId: v }))}>
+                <Select value={editDeptId || undefined} onValueChange={v => setEditDeptId(v)}>
                   <SelectTrigger><SelectValue placeholder="请选择部门" /></SelectTrigger>
                   <SelectContent className="max-h-60">{renderDeptOptions(deptStore.tree)}</SelectContent>
                 </Select>

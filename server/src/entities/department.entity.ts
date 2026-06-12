@@ -26,6 +26,14 @@ export class Department extends BaseEntity {
     @Column({ type: 'varchar', length: 100 })
     name!: string;
 
+    /** 部门负责人 */
+    @Column({ type: 'varchar', length: 50, default: '' })
+    leader!: string;
+
+    /** 联系方式（手机号） */
+    @Column({ type: 'varchar', length: 20, default: '' })
+    contact!: string;
+
     /** 排序值（同级升序排列，值越小越靠前） */
     @Column({ type: 'int', default: 0 })
     sort!: number;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { phoneSchema } from '../utils/validation.js';
 
 /** 创建部门校验 */
 export const createDepartmentSchema = z.object({
@@ -6,6 +7,8 @@ export const createDepartmentSchema = z.object({
         .string()
         .min(1, '部门名称不能为空')
         .max(100, '部门名称最多100个字符'),
+    leader: z.string().min(1, '部门负责人不能为空').max(50, '负责人最多50个字符'),
+    contact: phoneSchema,
     sort: z.number().int().min(0).max(9999).optional(),
     status: z.union([z.literal(0), z.literal(1)]).optional(),
     parentId: z.string().uuid().nullable().optional(),
@@ -14,6 +17,8 @@ export const createDepartmentSchema = z.object({
 /** 更新部门校验 */
 export const updateDepartmentSchema = z.object({
     name: z.string().min(1).max(100).optional(),
+    leader: z.string().min(1).max(50).optional(),
+    contact: phoneSchema.optional(),
     sort: z.number().int().min(0).max(9999).optional(),
     status: z.union([z.literal(0), z.literal(1)]).optional(),
     parentId: z.string().uuid().nullable().optional(),
