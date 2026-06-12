@@ -18,6 +18,19 @@ import type { DepartmentFormData } from '@/lib/validators'
 
 const INITIAL_FORM: DepartmentFormData = { name: '', leader: '', contact: '', sort: 0, parentId: null, status: 1 }
 
+/** 递归展平部门树为上级选择器选项 */
+function flattenParentOptions(nodes: DepartmentTreeNode[]): Array<{ id: string | null; label: string }> {
+  const options: Array<{ id: string | null; label: string }> = [{ id: null, label: '顶级部门' }]
+  const walk = (list: DepartmentTreeNode[], d: number) => {
+    for (const n of list) {
+      options.push({ id: n.id, label: '　'.repeat(d) + n.name })
+      if (n.children?.length) walk(n.children, d + 1)
+    }
+  }
+  walk(nodes, 0)
+  return options
+}
+
 export default function DepartmentListPage() {
   const deptStore = useDepartmentStore()
   const authStore = useAuthStore()
@@ -28,6 +41,8 @@ export default function DepartmentListPage() {
   const [formData, setFormData] = useState<DepartmentFormData>({ ...INITIAL_FORM })
   const [formLoading, setFormLoading] = useState(false)
   const { errors, validate, validateField, clearErrors } = useZodForm(departmentFormSchema)
+
+  const parentOptions = flattenParentOptions(deptStore.tree)
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null)
@@ -131,6 +146,17 @@ export default function DepartmentListPage() {
           <DialogHeader><DialogTitle>{formTitle}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 py-2">
             <div className="space-y-2">
+              <Label>上级部门</Label>
+              <Select value={formData.parentId || '__root__'} onValueChange={v => updateField('parentId', v === '__root__' ? null : v)}>
+                <SelectTrigger><SelectValue placeholder="顶级部门" /></SelectTrigger>
+                <SelectContent>
+                  {parentOptions.map(opt => (
+                    <SelectItem key={opt.id ?? '__root__'} value={opt.id ?? '__root__'}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>部门名称 <span className="text-destructive">*</span></Label>
               <Input value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="请输入部门名称" />
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
@@ -157,13 +183,6 @@ export default function DepartmentListPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectContent>
                 </Select>
-              </div>
-            )}
-            {formData.parentId && !formTarget && (
-              <div className="space-y-2">
-                <Label>父部门 ID</Label>
-                <Input value={formData.parentId} disabled />
-                <p className="text-xs text-muted-foreground">将创建为该部门的子部门</p>
               </div>
             )}
           </div>
